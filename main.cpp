@@ -62,7 +62,6 @@ chunk* seperate_chunk(int fd, off_t fsize){
             for(size_t j= 0; j<chunks[i].end;j++){
                 if(chunks[i].data[chunks[i].end-j] == '\n'){
                     next = j;
-                    chunks[i].end -= chunks[i].start;
                     chunks[i].start = 0;
                     chunks[i].end -= next;
                     break;
@@ -72,7 +71,7 @@ chunk* seperate_chunk(int fd, off_t fsize){
         else{
             next = 0;
         }
-        std::cout << i << " " << chunks[i].data << std::endl;
+        // std::cout << i << " " << chunks[i].data[chunks[i].end] << std::endl;
         
     }
     return chunks;
