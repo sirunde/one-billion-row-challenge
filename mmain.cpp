@@ -32,6 +32,26 @@ struct chunk{
     size_t end = 0;
     size_t start = 0;
 };
+double conversion(const char* input){ // -0.1  -.1 -1.0 1.0
+    double mod =0;
+    if(*input == '-'){
+        mod = -1;
+        input++;
+    }
+    if(*input == '.'){
+        input++;
+        return (input[0]-48)*0.1;
+    }
+    else{
+        while(*input !='.'){
+            mod*=10;
+            mod+=(input[0]-48);
+            input++;
+        }
+        input+=2;
+        return mod+(input[-1]-48)*0.1;
+    }
+}
 
 // it seperate files into 8 chunks, because it has 8 CPUs
 chunk* seperate_chunk(int fd, off_t fsize,int cpu){
@@ -97,15 +117,16 @@ void ReadFile(chunk* chunks, int cpu, std::unordered_map<std::string, result>*& 
             num = line;
             line.clear();
             auto z = OneB->find(name);
+            double t = conversion(num.c_str());
             if(z != OneB->end()){
-                z->second.min = std::min(z->second.min, std::stod(num));
-                z->second.total += std::stod(num);
-                z->second.max = std::max(z->second.max, std::stod(num));
+                z->second.min = std::min(z->second.min, t);
+                z->second.total += t;
+                z->second.max = std::max(z->second.max, t);
                 z->second.num++;
             }
             
             else{
-                (*OneB)[name] = result{std::stod(num),std::stod(num),std::stod(num),1.};
+                (*OneB)[name] = result{t,t,t,1.};
             }
         }
         else if(chunks[cpu].data[j] ==';'){
