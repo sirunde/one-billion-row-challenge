@@ -33,7 +33,7 @@ struct chunk{
     size_t start = 0;
 };
 
-double conversion(const char* input){ // -0.1  -.1 -1.0 1.0
+inline double conversion(char*& input){ // -0.1  -.1 -1.0 1.0
     double mod =0;
     if(*input == '-'){
         mod = -1;
@@ -49,21 +49,22 @@ double conversion(const char* input){ // -0.1  -.1 -1.0 1.0
             mod+=(input[0]-48);
             input++;
         }
-        input+=2;
-        return mod+(input[-1]-48)*0.1;
+        input+=3;
+        return mod+(input[-2]-48)*0.1;
     }
 }
 
 // it seperate files into 8 chunks, because it has 8 CPUs
-chunk* seperate_chunk(int fd, off_t fsize,int cpu){
+inline chunk* seperate_chunk(int fd, off_t fsize,int cpus){
     // seperate chunks by 8, since thread is 8
+    int cpu = cpus;
     off_t  perChunk = fsize/cpu; // perChunk = 40, fsize = 121, cpu = 3
     chunk *chunks = new chunk[cpu];
     
     int next = 0;
     int starting = 0;
 
-    char* buffer = static_cast<char*>(mmap(NULL, fsize, PROT_READ, MAP_SHARED, fd, 0)); // assigned values in chunks
+    char* buffer = static_cast<char*>(mmap(NULL, fsize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)); // assigned values in chunks
 
     for(int i = 0;i<cpu;i++){
         chunks[i].start = starting;
@@ -89,13 +90,13 @@ chunk* seperate_chunk(int fd, off_t fsize,int cpu){
 }
 
 // open file, and run seperate chunk
-chunk* open_file(const char* fileName,int cpu){
+inline chunk* open_file(const char* fileName,int cpu){
     // was trying to use unordered map, but it needs to be sorted.
-    int fd = open(fileName,O_RDONLY);
     off_t fsize;
+    int fd = open(fileName,O_RDONLY);
     fsize = lseek(fd, 0, SEEK_END);
     if(fd == -1){
-        std::cout << "failed to read file\n";
+        printf("failed to read file\n");
         exit(0);
     }
     chunk *chunks = seperate_chunk(fd, fsize,cpu);
@@ -107,37 +108,58 @@ chunk* open_file(const char* fileName,int cpu){
 // need thread running
 void ReadFile(chunk* chunks, int cpu, std::unordered_map<std::string, result>*& temp){
     std::unordered_map<std::string, result>* OneB = new std::unordered_map<std::string, result>;
-    std::string line ="";
-    std::string name = "";
-    std::string num = "";
-    for(size_t j = chunks[cpu].start; j < chunks[cpu].end+1;j++){
-        if((chunks[cpu].data[j] == 0) || chunks[cpu].data[j] == '\n'){
-            if(line == ""){
-                break;
-            }
-            num = line;
-            line.clear();
-            auto z = OneB->find(name);
-            double t = conversion(num.c_str());
-            if(z != OneB->end()){
-                z->second.min = std::min(z->second.min, t);
-                z->second.total += t;
-                z->second.max = std::max(z->second.max, t);
-                z->second.num++;
-            }
-            
-            else{
-                (*OneB)[name] = result{t,t,t,1.};
-            }
+    char* starting = &chunks[cpu].data[chunks[cpu].start];
+    char* naming = starting;
+    std::string name = starting;
+    char* end = &chunks[cpu].data[chunks[cpu].end];
+    while(starting <= end){
+        naming = starting;
+        while(*starting != ';'){
+            starting++;
         }
-        else if(chunks[cpu].data[j] ==';'){
-                name = line;
-                line.clear();
+        *starting = '\0';
+        name = naming;
+        ++starting;
+        double t = conversion(starting);
+        auto z = OneB->find(name);
+        if(z != OneB->end()){
+            z->second.min = std::min(z->second.min, t);
+            z->second.total += t;
+            z->second.max = std::max(z->second.max, t);
+            z->second.num++;
         }
         else{
-            line+=chunks[cpu].data[j];
+            (*OneB)[name] = result{t,t,t,1.};
         }
     }
+    
+    // for(size_t j = chunks[cpu].start; j < chunks[cpu].end+1;j++){
+    //     if((chunks[cpu].data[j] == 0) || chunks[cpu].data[j] == '\n'){
+    //         if(line == ""){
+    //             break;
+    //         }
+    //         num = line;
+    //         line.clear();
+    //         auto z = OneB->find(name);
+    //         double t = conversion(num.c_str());
+    //         if(z != OneB->end()){
+    //             z->second.min = std::min(z->second.min, t);
+    //             z->second.total += t;
+    //             z->second.max = std::max(z->second.max, t);
+    //             z->second.num++;
+    //         }
+    //         else{
+    //             (*OneB)[name] = result{t,t,t,1.};
+    //         }
+    //     }
+    //     else if(chunks[cpu].data[j] ==';'){
+    //             name = line;
+    //             line.clear();
+    //     }
+    //     else{
+    //         line+=chunks[cpu].data[j];
+    //     }
+    // }
     temp = OneB;
 }
 
@@ -167,6 +189,9 @@ void threading(chunk* chunk, int cpu){
         }
         delete i;
     }
+    // std::map<std::string, result> ordered(OneB.begin(), OneB.end());
+    // for(auto x = ordered.begin(); x != ordered.end(); ++X_OK)
+    //     printf("%s %f %f %f",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
     std::vector<decltype(OneB)::iterator> output;
     output.reserve(OneB.size());
     for(auto it = OneB.begin(); it != OneB.end(); ++it)
@@ -177,14 +202,14 @@ void threading(chunk* chunk, int cpu){
                   return lhs->first < rhs->first;
               });
     
-
     for(auto const& x:output){
-        std::cout << x->first << " " << x->second.min << " " << x->second.total/x->second.num << " " << x->second.max << " " << x->second.num << " ";
+        printf("%s %.1f %.1f %.1f ",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
     }
-    std::cout << "\n" << output.size();
+    printf("\n");
 }
 
 int main(int argc, char* argv[]){
+    std::ios::sync_with_stdio(false);
     auto start = std::chrono::high_resolution_clock::now();
     int cpu = 4;
     const char *file_name;
@@ -194,13 +219,13 @@ int main(int argc, char* argv[]){
             cpu = std::atoi(argv[2]);
     }
     else{
-        std::cout << "Usage: ./main file nthread";
+        printf("Usage: ./main file nthread");
         exit(0);
     }
     chunk* chunk = open_file(file_name,cpu);
     threading(chunk,cpu);
     auto stop = std::chrono::high_resolution_clock::now();
     auto duration = std::chrono::duration<double>(stop - start);
-    std::cout << "Time taken: " << duration.count() << std::endl;
+    printf("Time taken: %f \n", duration.count());
     delete[] chunk;
 }
