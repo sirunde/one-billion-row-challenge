@@ -32,6 +32,7 @@ struct chunk{
     size_t end = 0;
     size_t start = 0;
 };
+
 double conversion(const char* input){ // -0.1  -.1 -1.0 1.0
     double mod =0;
     if(*input == '-'){
@@ -152,7 +153,17 @@ void threading(chunk* chunk, int cpu){
     }
     for(auto i:temp){
         for(auto j:*i){
-            OneB[j.first] = j.second;
+            auto z = OneB.find(j.first);
+            if(z != OneB.end()){
+                z->second.min = std::min(z->second.min, j.second.min);
+                z->second.total += j.second.total;
+                z->second.max = std::max(z->second.max, j.second.max);
+                z->second.num += j.second.num;
+            }
+            
+            else{
+                (OneB)[j.first] = j.second;
+            }
         }
         delete i;
     }
@@ -170,6 +181,7 @@ void threading(chunk* chunk, int cpu){
     for(auto const& x:output){
         std::cout << x->first << " " << x->second.min << " " << x->second.total/x->second.num << " " << x->second.max << " " << x->second.num << " ";
     }
+    std::cout << "\n" << output.size();
 }
 
 int main(int argc, char* argv[]){
