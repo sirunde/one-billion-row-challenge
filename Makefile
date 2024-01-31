@@ -1,12 +1,12 @@
 CC=g++
-TARGET=main
+TARGET=mmain
 all: $(TARGET)
 
 run:
 	./main input.txt output.txt
 	
-$(TARGET): main.cpp
-	$(CC) -g -Wall -Wextra main.cpp -o $@
+$(TARGET): $(TARGET).cpp
+	$(CC) -g -Wall -Wextra mmain.cpp -o main -O3
 
 clean:
 	rm -rf *.o $(TARGET)
