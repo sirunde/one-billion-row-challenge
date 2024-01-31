@@ -1,7 +1,13 @@
 #include <iostream> 
 #include <map>
 #include <unordered_map>
+#include <chrono> //time
+#include <vector>
+#include <bits/stdc++.h>
+#include <iterator>
 #include <thread> //threading
+#include <mutex> 
+
 #include <algorithm> //min max
 //ifstream
 #include <fstream>
@@ -22,57 +28,41 @@ struct result{
 };
 
 struct chunk{
-    size_t start=0;
-    size_t end=0;
     char* data;
+    size_t end = 0;
+    size_t start = 0;
 };
-
+// 0 123, 123 == \n, start from 124
 // it seperate files into 8 chunks, because it has 8 CPUs
 chunk* seperate_chunk(int fd, off_t fsize,int cpu){
     // seperate chunks by 8, since thread is 8
     off_t  perChunk = fsize/cpu; // perChunk = 40, fsize = 121, cpu = 3
     chunk *chunks = new chunk[cpu];
+    char* buffer = new char[fsize];
     int next = 0;
-    // to check next start point and end point
-    /* ex) 999, 999//8 = 124
-        each chunk has 124
-        (0-123), (124-247),(248-371), (372-495),(496-619), (620-743), (744-867), (868-992(999))
-    */
-    for(int i = 0;i<cpu;i++){
-        // size of chunks
-        chunks[i].end = perChunk+next; // 1st. end = 40+0. 2nd, next was 4, so 40+4, total 44 size.
-        // if i == 0, start of chunks
-        if(i==0){
-            chunks[i].start = 0; 
-            chunks[i].data = new char[chunks[i].end+1]; // data size = 41
+    int starting = 0;
 
-        } // size = 41, bytes 0-39, 40 is going to be \000
-        else if(i==(cpu-1)){
-            // 
-            chunks[i].start = chunks[i-1].end+1+chunks[i-1].start ;
-            chunks[i].end = fsize - chunks[i].start+1; // fsize = 10, start = 0, end = 10
-            chunks[i].data = new char[chunks[i].end +1];
-        }
-        else{
-            chunks[i].start = chunks[i-1].end+1+chunks[i-1].start; // start from 40-4+1 = 37 which is after \n 37+45-9 = 
-            chunks[i].data = new char[chunks[i].end +1]; //40+4+1 = 45, is fine
-        }
-        size_t num = pread(fd,chunks[i].data, chunks[i].end, chunks[i].start); // assigned values in chunks
-        if(i == (cpu-1) || chunks[i].data[chunks[i].end-1] == '\n'){ // 1st check [39], and if it is \n
-            next = -1; // if so, set next = 0
-            chunks[i].end--;
+    size_t num = pread(fd, buffer, fsize, starting); // assigned values in chunks
+
+    for(int i = 0;i<cpu;i++){
+        chunks[i].start = starting;
+        chunks[i].end = perChunk*(i+1)+next;
+        chunks[i].data = buffer;
+        if(i == (cpu-1)){ // 1st check [39], and if it is \n
+            chunks[i].end = fsize;
+            break;
         }
         else{
             for(size_t j= 0; j<chunks[i].end;j++){
                 if(chunks[i].data[chunks[i].end-j] == '\n'){ //1st check, 36 was \n, so next is 4.
                     next = j; // next = 4
-                    chunks[i].end -= next; // descrese end to 36, so we hae \n at the end of line
+                    chunks[i].end -= next; // descrese chunks[i].end to 36, so we hae \n at the chunks[i].end of line
                     break;
                 }
             }
         }
-        // std::cout << i << " " << chunks[i].data[chunks[i].end] << std::endl;
-        
+        starting = chunks[i].end+1;
+        // std::cout << i << " " << chunks[i].data[chunks[i].chunks[i].end] << std::chunks[i].endl;
     }
     return chunks;
 }
@@ -100,12 +90,11 @@ void ReadFile(chunk* chunks, int cpu){
     std::string name = "";
     std::string num = "";
     for(auto i=0;i<cpu;i++){
-        for(size_t j = 0; j < chunks[i].end+1;j++){
-            if(chunks[i].data[j] ==';'){
-                name = line;
-                line.clear();
-            }
-            else if(chunks[i].data[j] == '\n'){
+        for(size_t j = chunks[i].start; j < chunks[i].end+1;j++){
+            if((chunks[i].data[j] == 0) || chunks[i].data[j] == '\n'){
+                if(line == ""){
+                    break;
+                }
                 num = line;
                 line.clear();
                 auto z = OneB.find(name);
@@ -115,39 +104,45 @@ void ReadFile(chunk* chunks, int cpu){
                     z->second.max = std::max(z->second.max, std::stod(num));
                     z->second.num++;
                 }
+                
                 else{
                     OneB[name] = result{std::stod(num),std::stod(num),std::stod(num),1.};
                 }
             }
-            else if(chunks[i].data[j] == 0){
-                                num = line;
-                line.clear();
-                auto z = OneB.find(name);
-                if(z != OneB.end()){
-                    z->second.min = std::min(z->second.min, std::stod(num));
-                    z->second.total += std::stod(num);
-                    z->second.max = std::max(z->second.max, std::stod(num));
-                    z->second.num++;
-                }
-                else{
-                    OneB[name] = result{std::stod(num),std::stod(num),std::stod(num),1.};
-                }
-                break;
+            else if(chunks[i].data[j] ==';'){
+                    name = line;
+                    line.clear();
             }
             else{
                 line+=chunks[i].data[j];
             }
         }
     }
+    std::vector<decltype(OneB)::iterator> output;
+    output.reserve(OneB.size());
+    for(auto it = OneB.begin(); it != OneB.end(); ++it)
+        output.push_back(it);
 
-    for(auto const& x:OneB){
-        std::cout << x.first << " " << x.second.min << " " << x.second.total/x.second.num << " " << x.second.max << " " << x.second.num << " ";
+    std::sort(output.begin(), output.end(),
+              [](auto& lhs, auto&rhs) {
+                  return lhs->first < rhs->first;
+              });
+    
+
+    for(auto const& x:output){
+        std::cout << x->first << " " << x->second.min << " " << x->second.total/x->second.num << " " << x->second.max << " " << x->second.num << " ";
     }
 }
 
 int main(int argc, char* argv[]){
+    auto start = std::chrono::high_resolution_clock::now();
     const char *file_name = argv[1];
     int cpu = std::atoi(argv[2]);
     chunk* chunk = open_file(file_name,cpu);
     ReadFile(chunk, cpu);
+    auto stop = std::chrono::high_resolution_clock::now();
+    auto duration = std::chrono::duration<double>(stop - start);
+    std::cout << "Time taken: " << duration.count() << std::endl;
+    delete[] chunk[0].data;
+    delete[] chunk;
 }
