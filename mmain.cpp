@@ -1,30 +1,23 @@
 #include <iostream> 
-#include <map>
 #include <unordered_map>
 #include <chrono> //time
 #include <vector>
 #include <bits/stdc++.h>
-#include <iterator>
 #include <thread> //threading
-#include <mutex> 
-
 #include <algorithm> //min max
-//ifstream
-#include <fstream>
-#include <sstream>
 #include <string>
 // mmap
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-
+#include "robin_hood.h"
 // store results of each station
 struct result{
-    double min;
-    double total;
-    double max;
-    double num;
+    int min;
+    long total;
+    int max;
+    long num;
 };
 
 struct chunk{
@@ -33,15 +26,15 @@ struct chunk{
     size_t start = 0;
 };
 
-inline double conversion(char*& input){ // -0.1  -.1 -1.0 1.0
-    double mod =0;
+int conversion(char*& input){ // -0.1 -.1 -1.0 1.0
+    int mod =0;
     if(*input == '-'){
         mod = -1;
         input++;
     }
     if(*input == '.'){
         input++;
-        return (input[0]-48)*0.1;
+        return (input[0]-48);
     }
     else{
         while(*input !='.'){
@@ -50,12 +43,12 @@ inline double conversion(char*& input){ // -0.1  -.1 -1.0 1.0
             input++;
         }
         input+=3;
-        return mod+(input[-2]-48)*0.1;
+        return mod*10+(input[-2]-48);
     }
 }
 
 // it seperate files into 8 chunks, because it has 8 CPUs
-inline chunk* seperate_chunk(int fd, off_t fsize,int cpus){
+chunk* seperate_chunk(int& fd, off_t& fsize,const int& cpus){
     // seperate chunks by 8, since thread is 8
     int cpu = cpus;
     off_t  perChunk = fsize/cpu; // perChunk = 40, fsize = 121, cpu = 3
@@ -65,7 +58,6 @@ inline chunk* seperate_chunk(int fd, off_t fsize,int cpus){
     int starting = 0;
 
     char* buffer = static_cast<char*>(mmap(NULL, fsize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)); // assigned values in chunks
-
     for(int i = 0;i<cpu;i++){
         chunks[i].start = starting;
         chunks[i].end = perChunk*(i+1)+next;
@@ -90,7 +82,7 @@ inline chunk* seperate_chunk(int fd, off_t fsize,int cpus){
 }
 
 // open file, and run seperate chunk
-inline chunk* open_file(const char* fileName,int cpu){
+inline chunk* open_file(const char*& fileName,const int& cpu){
     // was trying to use unordered map, but it needs to be sorted.
     off_t fsize;
     int fd = open(fileName,O_RDONLY);
@@ -106,13 +98,13 @@ inline chunk* open_file(const char* fileName,int cpu){
 
 
 // need thread running
-void ReadFile(chunk* chunks, int cpu, std::unordered_map<std::string, result>*& temp){
-    std::unordered_map<std::string, result>* OneB = new std::unordered_map<std::string, result>;
+void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::string, result>*& temp){
+    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(413);
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     std::string name = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
-    while(starting <= end){
+    while(starting < end){
         naming = starting;
         while(*starting != ';'){
             starting++;
@@ -120,7 +112,7 @@ void ReadFile(chunk* chunks, int cpu, std::unordered_map<std::string, result>*& 
         *starting = '\0';
         name = naming;
         ++starting;
-        double t = conversion(starting);
+        int t = conversion(starting);
         auto z = OneB->find(name);
         if(z != OneB->end()){
             z->second.min = std::min(z->second.min, t);
@@ -129,7 +121,7 @@ void ReadFile(chunk* chunks, int cpu, std::unordered_map<std::string, result>*& 
             z->second.num++;
         }
         else{
-            (*OneB)[name] = result{t,t,t,1.};
+            (*OneB)[name] = result{t,t,t,1};
         }
     }
     
@@ -163,9 +155,9 @@ void ReadFile(chunk* chunks, int cpu, std::unordered_map<std::string, result>*& 
     temp = OneB;
 }
 
-void threading(chunk* chunk, int cpu){
-    std::vector<std::unordered_map<std::string, result>*> temp(cpu);
-    std::unordered_map<std::string, result> OneB;
+void threading(chunk* chunk, const int& cpu){
+    std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
+    robin_hood::unordered_map<std::string, result> OneB(413);
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
         myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
@@ -187,6 +179,7 @@ void threading(chunk* chunk, int cpu){
                 (OneB)[j.first] = j.second;
             }
         }
+        
         delete i;
     }
     // std::map<std::string, result> ordered(OneB.begin(), OneB.end());
@@ -201,11 +194,11 @@ void threading(chunk* chunk, int cpu){
               [](auto& lhs, auto&rhs) {
                   return lhs->first < rhs->first;
               });
-    
+    printf("{");
     for(auto const& x:output){
-        printf("%s %.1f %.1f %.1f ",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
+        printf("%s=%.1f/%.1lf/%.1f, ",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
     }
-    printf("\n");
+    printf("}\n");
 }
 
 int main(int argc, char* argv[]){
