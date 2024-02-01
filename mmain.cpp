@@ -26,25 +26,22 @@ struct chunk{
     size_t start = 0;
 };
 
-int conversion(char*& input){ // -0.1 -.1 -1.0 1.0
-    int mod =0;
+int conversion(char*& input){ // -0.1 -.1 -1.0 11.0
+    int mod =1;
     if(*input == '-'){
         mod = -1;
         input++;
     }
     if(*input == '.'){
-        input++;
-        return (input[0]-48);
+        input+=2;
+        return (input[-1]-48)*mod;
     }
-    else{
-        while(*input !='.'){
-            mod*=10;
-            mod+=(input[0]-48);
-            input++;
-        }
-        input+=3;
-        return mod*10+(input[-2]-48);
+    if(input[1] == '.'){
+        input+=4;
+        return mod*((input[-2]-48)+((input[-4]-48)*10));
     }
+    input+=5;
+    return ((input[-2]-48)+((input[-4])-48)*10+(input[-5]-48)*100)* mod;
 }
 
 // it seperate files into 8 chunks, because it has 8 CPUs
@@ -99,7 +96,7 @@ inline chunk* open_file(const char*& fileName,const int& cpu){
 
 // need thread running
 void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::string, result>*& temp){
-    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(413);
+    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(10'000'019);
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     std::string name = starting;
@@ -157,7 +154,7 @@ void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::stri
 
 void threading(chunk* chunk, const int& cpu){
     std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
-    robin_hood::unordered_map<std::string, result> OneB(413);
+    robin_hood::unordered_map<std::string, result> OneB(10'000'019);
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
         myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
