@@ -7,6 +7,7 @@
 #include <algorithm> //min max
 #include <string>
 // mmap
+#include <boost/range/irange.hpp>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -79,7 +80,7 @@ chunk* seperate_chunk(int& fd, off_t& fsize,const int& cpus){
 }
 
 // open file, and run seperate chunk
-inline chunk* open_file(const char*& fileName,const int& cpu){
+chunk* open_file(const char*& fileName,const int& cpu){
     // was trying to use unordered map, but it needs to be sorted.
     off_t fsize;
     int fd = open(fileName,O_RDONLY);
@@ -95,8 +96,8 @@ inline chunk* open_file(const char*& fileName,const int& cpu){
 
 
 // need thread running
-void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::string, result>*& temp){
-    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(10'000'019);
+inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::string, result>*& temp,const int& cpus){
+    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(10'000/cpus);
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     std::string name = starting;
@@ -118,7 +119,11 @@ void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::stri
             z->second.num++;
         }
         else{
-            (*OneB)[name] = result{t,t,t,1};
+            (*OneB)[name].max = t;
+            (*OneB)[name].min = t;
+            (*OneB)[name].total = t;
+            (*OneB)[name].num = 1;
+
         }
     }
     
@@ -154,15 +159,21 @@ void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::stri
 
 void threading(chunk* chunk, const int& cpu){
     std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
-    robin_hood::unordered_map<std::string, result> OneB(10'000'019);
+    robin_hood::unordered_map<std::string, result> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
-        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
+        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
     }
     for (int i=0; i<cpu; i++){
         myThreads[i].join();
     }
+    OneB = *temp.at(0);
+    int idx = 0;
     for(auto i:temp){
+        if(idx == 0){
+            idx++;
+            continue;
+        }
         for(auto j:*i){
             auto z = OneB.find(j.first);
             if(z != OneB.end()){
@@ -200,7 +211,6 @@ void threading(chunk* chunk, const int& cpu){
 
 int main(int argc, char* argv[]){
     std::ios::sync_with_stdio(false);
-    auto start = std::chrono::high_resolution_clock::now();
     int cpu = 4;
     const char *file_name;
     if (argc > 1){
@@ -214,8 +224,5 @@ int main(int argc, char* argv[]){
     }
     chunk* chunk = open_file(file_name,cpu);
     threading(chunk,cpu);
-    auto stop = std::chrono::high_resolution_clock::now();
-    auto duration = std::chrono::duration<double>(stop - start);
-    printf("Time taken: %f \n", duration.count());
     delete[] chunk;
 }
