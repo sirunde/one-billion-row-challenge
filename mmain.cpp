@@ -134,14 +134,14 @@ inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<st
 void threading(chunk* chunk, const int& cpu){
     std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
     robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>;
-    // std::thread myThreads[cpu];
+    std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
-        // myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
-        ReadFile(chunk,i,std::ref(temp[i]),cpu);
+        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
+        // ReadFile(chunk,i,std::ref(temp[i]),cpu);
     }
-    // for (int i=0; i<cpu; i++){
-    //     myThreads[i].join();
-    // }
+    for (int i=0; i<cpu; i++){
+        myThreads[i].join();
+    }
     OneB = temp.at(0);
     int idx = 0;
     for(auto i:temp){
