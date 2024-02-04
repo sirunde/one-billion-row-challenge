@@ -12,6 +12,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "robin_hood.h"
+#include "parallel_hashmap/phmap.h"
 // store results of each station
 struct result{
     int min;
@@ -95,8 +96,8 @@ chunk* open_file(const char*& fileName,const int& cpu){
 
 
 // need thread running
-inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<std::string, result>*& temp,const int& cpus){
-    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(10'000/cpus);
+inline void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result>*& temp,const int& cpus){
+    phmap::parallel_flat_hash_map<std::string, result>* OneB = new phmap::parallel_flat_hash_map<std::string, result>(10'000/cpus);
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
@@ -132,8 +133,8 @@ inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<st
 }
 
 void threading(chunk* chunk, const int& cpu){
-    std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
-    robin_hood::unordered_map<std::string, result> OneB;
+    std::vector<phmap::parallel_flat_hash_map<std::string, result>*> temp(cpu);
+    phmap::parallel_flat_hash_map<std::string, result> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
         myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
@@ -168,7 +169,7 @@ void threading(chunk* chunk, const int& cpu){
     // std::map<std::string, result> ordered(OneB.begin(), OneB.end());
     // for(auto x = ordered.begin(); x != ordered.end(); ++X_OK)
     //     printf("%s %f %f %f",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
-    std::vector<robin_hood::unordered_map<std::string, result>::iterator> output;
+    std::vector<phmap::parallel_flat_hash_map<std::string, result>::iterator> output;
     output.reserve(OneB.size());
     for(auto it = OneB.begin(); it != OneB.end(); ++it)
         output.push_back(it);
