@@ -7,7 +7,6 @@
 #include <algorithm> //min max
 #include <string>
 // mmap
-#include <boost/range/irange.hpp>
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -55,7 +54,7 @@ chunk* seperate_chunk(int& fd, off_t& fsize,const int& cpus){
     int next = 0;
     int starting = 0;
 
-    char* buffer = static_cast<char*>(mmap(NULL, fsize, PROT_READ | PROT_WRITE, MAP_PRIVATE, fd, 0)); // assigned values in chunks
+    char* buffer = (char*)(mmap(NULL, fsize, PROT_READ, MAP_SHARED, fd, 0)); // assigned values in chunks
     for(int i = 0;i<cpu;i++){
         chunks[i].start = starting;
         chunks[i].end = perChunk*(i+1)+next;
@@ -100,16 +99,18 @@ inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<st
     robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>(10'000/cpus);
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
-    std::string name = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
+    char a[100];
+    std::string name;
     while(starting < end){
         naming = starting;
         while(*starting != ';'){
             starting++;
         }
-        *starting = '\0';
-        name = naming;
+        memcpy(a,naming,starting-naming);
+        a[starting-naming] = '\0';
         ++starting;
+        name = a;
         int t = conversion(starting);
         auto z = OneB->find(name);
         if(z != OneB->end()){
@@ -126,48 +127,22 @@ inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<st
 
         }
     }
-    
-    // for(size_t j = chunks[cpu].start; j < chunks[cpu].end+1;j++){
-    //     if((chunks[cpu].data[j] == 0) || chunks[cpu].data[j] == '\n'){
-    //         if(line == ""){
-    //             break;
-    //         }
-    //         num = line;
-    //         line.clear();
-    //         auto z = OneB->find(name);
-    //         double t = conversion(num.c_str());
-    //         if(z != OneB->end()){
-    //             z->second.min = std::min(z->second.min, t);
-    //             z->second.total += t;
-    //             z->second.max = std::max(z->second.max, t);
-    //             z->second.num++;
-    //         }
-    //         else{
-    //             (*OneB)[name] = result{t,t,t,1.};
-    //         }
-    //     }
-    //     else if(chunks[cpu].data[j] ==';'){
-    //             name = line;
-    //             line.clear();
-    //     }
-    //     else{
-    //         line+=chunks[cpu].data[j];
-    //     }
-    // }
+
     temp = OneB;
 }
 
 void threading(chunk* chunk, const int& cpu){
     std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
-    robin_hood::unordered_map<std::string, result> OneB;
-    std::thread myThreads[cpu];
+    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>;
+    // std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
-        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
+        // myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
+        ReadFile(chunk,i,std::ref(temp[i]),cpu);
     }
-    for (int i=0; i<cpu; i++){
-        myThreads[i].join();
-    }
-    OneB = *temp.at(0);
+    // for (int i=0; i<cpu; i++){
+    //     myThreads[i].join();
+    // }
+    OneB = temp.at(0);
     int idx = 0;
     for(auto i:temp){
         if(idx == 0){
@@ -175,8 +150,8 @@ void threading(chunk* chunk, const int& cpu){
             continue;
         }
         for(auto j:*i){
-            auto z = OneB.find(j.first);
-            if(z != OneB.end()){
+            auto z = OneB->find(j.first);
+            if(z != OneB->end()){
                 z->second.min = std::min(z->second.min, j.second.min);
                 z->second.total += j.second.total;
                 z->second.max = std::max(z->second.max, j.second.max);
@@ -184,7 +159,7 @@ void threading(chunk* chunk, const int& cpu){
             }
             
             else{
-                (OneB)[j.first] = j.second;
+                (*OneB)[j.first] = j.second;
             }
         }
         
@@ -193,9 +168,9 @@ void threading(chunk* chunk, const int& cpu){
     // std::map<std::string, result> ordered(OneB.begin(), OneB.end());
     // for(auto x = ordered.begin(); x != ordered.end(); ++X_OK)
     //     printf("%s %f %f %f",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
-    std::vector<decltype(OneB)::iterator> output;
-    output.reserve(OneB.size());
-    for(auto it = OneB.begin(); it != OneB.end(); ++it)
+    std::vector<robin_hood::unordered_map<std::string, result>::iterator> output;
+    output.reserve(OneB->size());
+    for(auto it = OneB->begin(); it != OneB->end(); ++it)
         output.push_back(it);
 
     std::sort(output.begin(), output.end(),
