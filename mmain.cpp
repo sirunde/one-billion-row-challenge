@@ -133,7 +133,7 @@ inline void ReadFile(chunk* chunks, const int& cpu, robin_hood::unordered_map<st
 
 void threading(chunk* chunk, const int& cpu){
     std::vector<robin_hood::unordered_map<std::string, result>*> temp(cpu);
-    robin_hood::unordered_map<std::string, result>* OneB = new robin_hood::unordered_map<std::string, result>;
+    robin_hood::unordered_map<std::string, result> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
         myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
@@ -142,7 +142,7 @@ void threading(chunk* chunk, const int& cpu){
     for (int i=0; i<cpu; i++){
         myThreads[i].join();
     }
-    OneB = temp.at(0);
+    OneB = *temp.at(0);
     int idx = 0;
     for(auto i:temp){
         if(idx == 0){
@@ -150,8 +150,8 @@ void threading(chunk* chunk, const int& cpu){
             continue;
         }
         for(auto j:*i){
-            auto z = OneB->find(j.first);
-            if(z != OneB->end()){
+            auto z = OneB.find(j.first);
+            if(z != OneB.end()){
                 z->second.min = std::min(z->second.min, j.second.min);
                 z->second.total += j.second.total;
                 z->second.max = std::max(z->second.max, j.second.max);
@@ -159,7 +159,7 @@ void threading(chunk* chunk, const int& cpu){
             }
             
             else{
-                (*OneB)[j.first] = j.second;
+                (OneB)[j.first] = j.second;
             }
         }
         
@@ -169,8 +169,8 @@ void threading(chunk* chunk, const int& cpu){
     // for(auto x = ordered.begin(); x != ordered.end(); ++X_OK)
     //     printf("%s %f %f %f",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
     std::vector<robin_hood::unordered_map<std::string, result>::iterator> output;
-    output.reserve(OneB->size());
-    for(auto it = OneB->begin(); it != OneB->end(); ++it)
+    output.reserve(OneB.size());
+    for(auto it = OneB.begin(); it != OneB.end(); ++it)
         output.push_back(it);
 
     std::sort(output.begin(), output.end(),
