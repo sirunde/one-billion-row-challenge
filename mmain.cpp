@@ -96,8 +96,8 @@ chunk* open_file(const char*& fileName,const int& cpu){
 
 
 // need thread running
-inline void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result>*& temp,const int& cpus){
-    phmap::parallel_flat_hash_map<std::string, result>* OneB = new phmap::parallel_flat_hash_map<std::string, result>(10'000/cpus);
+inline void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result>*& temp){
+    phmap::parallel_flat_hash_map<std::string, result>* OneB = new phmap::parallel_flat_hash_map<std::string, result>;
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
@@ -137,7 +137,7 @@ void threading(chunk* chunk, const int& cpu){
     phmap::parallel_flat_hash_map<std::string, result> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
-        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]),cpu);
+        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
         // ReadFile(chunk,i,std::ref(temp[i]),cpu);
     }
     for (int i=0; i<cpu; i++){
@@ -180,7 +180,7 @@ void threading(chunk* chunk, const int& cpu){
               });
     printf("{");
     for(auto const& x:output){
-        printf("%s=%.1f/%.1lf/%.1f, ",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
+        printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
     }
     printf("}\n");
 }
