@@ -47,6 +47,7 @@ int conversion(char*& input){ // -0.1 -.1 -1.0 11.0
 
 // it seperate files into 8 chunks, because it has 8 CPUs
 chunk* seperate_chunk(int& fd, off_t& fsize,const int& cpus){
+
     // seperate chunks by 8, since thread is 8
     int cpu = cpus;
     off_t  perChunk = fsize/cpu; // perChunk = 40, fsize = 121, cpu = 3
@@ -96,7 +97,7 @@ chunk* open_file(const char*& fileName,const int& cpu){
 
 
 // need thread running
-inline void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result>*& temp){
+void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result>*& temp){
     phmap::parallel_flat_hash_map<std::string, result>* OneB = new phmap::parallel_flat_hash_map<std::string, result>;
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
@@ -125,10 +126,8 @@ inline void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_ma
             (*OneB)[name].min = t;
             (*OneB)[name].total = t;
             (*OneB)[name].num = 1;
-
         }
     }
-
     temp = OneB;
 }
 
@@ -171,6 +170,7 @@ void threading(chunk* chunk, const int& cpu){
     // std::map<std::string, result> ordered(OneB.begin(), OneB.end());
     // for(auto x = ordered.begin(); x != ordered.end(); ++X_OK)
     //     printf("%s %f %f %f",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
+
     std::vector<phmap::parallel_flat_hash_map<std::string, result>::iterator> output;
     output.reserve(OneB.size());
     for(auto it = OneB.begin(); it != OneB.end(); ++it)
