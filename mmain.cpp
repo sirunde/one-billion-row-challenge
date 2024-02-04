@@ -142,7 +142,7 @@ void threading(chunk* chunk, const int& cpu){
         // ReadFile(chunk,i,std::ref(temp[i]),cpu);
     }
     ReadFile(chunk, 0,std::ref(temp[0]));
-    for (int i=0; i<cpu; i++){
+    for (int i=1; i<cpu; i++){
         myThreads[i].join();
     }
     OneB = *temp.at(0);
