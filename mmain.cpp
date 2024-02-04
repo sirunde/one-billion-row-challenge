@@ -137,9 +137,11 @@ void threading(chunk* chunk, const int& cpu){
     phmap::parallel_flat_hash_map<std::string, result> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
-        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
+        if(i!=0)
+            myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
         // ReadFile(chunk,i,std::ref(temp[i]),cpu);
     }
+    ReadFile(chunk, 0,std::ref(temp[0]));
     for (int i=0; i<cpu; i++){
         myThreads[i].join();
     }
