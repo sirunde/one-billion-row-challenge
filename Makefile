@@ -7,7 +7,7 @@ run:
 	./main input.txt output.txt
 	
 $(TARGET): $(TARGET).cpp
-	$(CC) -lpthread -g -Wall -Wextra mmain.cpp -o main -O3
+	$(CC) -pthread -g -Wall -Wextra mmain.cpp -o main -O3
 
 clean:
 	rm -rf *.o $(TARGET) main

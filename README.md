@@ -4,7 +4,9 @@ The text file contains temperature values for a range of weather stations. Each 
 mmain.cpp used mmap
 pmain.cpp used pread.
 
-g++ -g -Wall -Wextra mmain.cpp -o main -O3 used to create executable file.
+g++ -lpthread -g -Wall -Wextra mmain.cpp -o main -O3 used to create executable file.
 
-default is 4 threads, but can be changed, ./main file threads
+default is 4 threads, but can be changed, ./main "file name" "number of threads"
 
+![alt text](image.png)
+best 1B took 20.21s.
