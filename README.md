@@ -8,5 +8,5 @@ g++ -lpthread -g -Wall -Wextra mmain.cpp -o main -O3 used to create executable f
 
 default is 4 threads, but can be changed, ./main "file name" "number of threads"
 
-![alt text](image.png)
+![image](https://github.com/bu-cs447-2024-1s/one-billion-row-challenge-sirunde/assets/68354747/448bc580-becf-4dbf-900a-bd76ce34dc9a)
 best 1B took 20.21s.
