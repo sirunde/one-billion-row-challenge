@@ -9,8 +9,8 @@ g++ -pthread -g -Wall -Wextra mmain.cpp -o main -O3 used to create an executable
 default is 4 threads, but can be changed, ./main "file name" "number of threads"
 
 ![image](https://github.com/bu-cs447-2024-1s/one-billion-row-challenge-sirunde/assets/68354747/448bc580-becf-4dbf-900a-bd76ce34dc9a)
-best 1B took 20.21s using 8threads.
-
+best case of 1B took 20.21s using 8threads.
+best case of 100M took 1.5s using 8threads.
 
 
 First tried to use pread, because heard pread has better performance for sequential memory accessing and loading large files. However, it turns out there is no difference, or sometimes worse. Therefore, Used mmap.
