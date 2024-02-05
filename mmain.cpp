@@ -98,7 +98,6 @@ void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
-    char a[100];
     int length;
     std::string name;
     while(starting < end){
@@ -107,10 +106,8 @@ void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::
             starting++;
         }
         length = starting-naming;
-        memcpy(a,naming,length);
-        a[length] = '\0';
         ++starting;
-        name = a;
+        std::string name(naming,length);
         int t = conversion(starting);
         auto z = OneB->find(name);
         if(z != OneB->end()){
