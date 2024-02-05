@@ -94,8 +94,8 @@ chunk* open_file(const char*& fileName,const int& cpu){
 
 
 // need thread running
-void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result>*& temp){
-    phmap::parallel_flat_hash_map<std::string, result>* OneB = new phmap::parallel_flat_hash_map<std::string, result>;
+void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::string, result, std::hash<std::string>, std::equal_to<std::string>, std::allocator<std::pair<const std::string, result>>, 12>*& temp){
+    phmap::parallel_flat_hash_map<std::string, result, std::hash<std::string>, std::equal_to<std::string>, std::allocator<std::pair<const std::string, result>>, 12>* OneB = new phmap::parallel_flat_hash_map<std::string, result, std::hash<std::string>, std::equal_to<std::string>, std::allocator<std::pair<const std::string, result>>, 12>;
     char* starting = &chunks[cpu].data[chunks[cpu].start];
     char* naming = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
@@ -130,8 +130,8 @@ void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::
 }
 
 void threading(chunk* chunk, const int& cpu){
-    std::vector<phmap::parallel_flat_hash_map<std::string, result>*> temp(cpu);
-    phmap::parallel_flat_hash_map<std::string, result> OneB;
+    std::vector<phmap::parallel_flat_hash_map<std::string, result, std::hash<std::string>, std::equal_to<std::string>, std::allocator<std::pair<const std::string, result>>, 12>*> temp(cpu);
+    phmap::parallel_flat_hash_map<std::string, result, std::hash<std::string>, std::equal_to<std::string>, std::allocator<std::pair<const std::string, result>>, 12> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
         myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
@@ -167,23 +167,23 @@ void threading(chunk* chunk, const int& cpu){
     // for(auto x = ordered.begin(); x != ordered.end(); ++x)
     //     printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
 
-    std::vector<phmap::parallel_flat_hash_map<std::string, result>::iterator> output;
-    output.reserve(OneB.size());
-    for(auto it = OneB.begin(); it != OneB.end(); ++it)
-        output.push_back(it);
+    std::vector<phmap::parallel_flat_hash_map<std::string, result, std::hash<std::string>, std::equal_to<std::string>, std::allocator<std::pair<const std::string, result>>, 12>> output;
+    // output.reserve(OneB.size());
+    // for(auto it = OneB.begin(); it != OneB.end(); ++it)
+    //     output.push_back(it);
 
-    std::sort(output.begin(), output.end(),
-              [](auto& lhs, auto&rhs) {
-                  return lhs->first < rhs->first;
-              });
-    printf("{");
-    for(auto const& x:output){
-        printf("%s=%.1f/%.1lf/%.1f, ",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
-        if (x== output.back()){
-            printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
+    // std::sort(output.begin(), output.end(),
+    //           [](auto& lhs, auto&rhs) {
+    //               return lhs->first < rhs->first;
+    //           });
+    // printf("{");
+    // for(auto const& x:output){
+    //     printf("%s=%.1f/%.1lf/%.1f, ",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
+    //     if (x== output.back()){
+    //         printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
 
-        }
-    }
+    //     }
+    // }
     printf("}\n");
     delete temp[0];
 }
