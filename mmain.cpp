@@ -9,6 +9,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include "parallel_hashmap/phmap.h"
+
 // store results of each station
 struct result{
     int min;
