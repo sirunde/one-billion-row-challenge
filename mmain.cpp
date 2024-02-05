@@ -6,7 +6,6 @@
 #include <string>
 // mmap
 #include <sys/mman.h>
-#include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include "parallel_hashmap/phmap.h"
@@ -182,7 +181,11 @@ void threading(chunk* chunk, const int& cpu){
               });
     printf("{");
     for(auto const& x:output){
-        printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
+        printf("%s=%.1f/%.1lf/%.1f, ",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
+        if (x== output.back()){
+            printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
+
+        }
     }
     printf("}\n");
 }
