@@ -146,12 +146,12 @@ void threading(chunk* chunk, const int& cpu){
     }
     OneB = *temp.at(0);
     int idx = 0;
-    for(auto i:temp){
+    for(auto& i:temp){
         if(idx == 0){
             idx++;
             continue;
         }
-        for(auto j:*i){
+        for(auto& j:*i){
             auto z = OneB.find(j.first);
             if(z != OneB.end()){
                 z->second.min = std::min(z->second.min, j.second.min);
