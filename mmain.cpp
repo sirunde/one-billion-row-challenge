@@ -118,10 +118,11 @@ void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::
             z->second.num++;
         }
         else{
-            (*OneB)[name].max = t;
-            (*OneB)[name].min = t;
-            (*OneB)[name].total = t;
-            (*OneB)[name].num = 1;
+            OneB->emplace(name,result{t,t,t,1});
+            // (*OneB)[name].max = t;
+            // (*OneB)[name].min = t;
+            // (*OneB)[name].total = t;
+            // (*OneB)[name].num = 1;
         }
     }
 
@@ -133,12 +134,10 @@ void threading(chunk* chunk, const int& cpu){
     phmap::parallel_flat_hash_map<std::string, result> OneB;
     std::thread myThreads[cpu];
     for (int i=0; i<cpu; i++){
-        if(i!=0)
-            myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
+        myThreads[i] = std::thread(ReadFile,chunk, i,std::ref(temp[i]));
         // ReadFile(chunk,i,std::ref(temp[i]),cpu);
     }
-    ReadFile(chunk, 0,std::ref(temp[0]));
-    for (int i=1; i<cpu; i++){
+    for (int i=0; i<cpu; i++){
         myThreads[i].join();
     }
     OneB = *temp.at(0);
@@ -171,7 +170,7 @@ void threading(chunk* chunk, const int& cpu){
     std::vector<phmap::parallel_flat_hash_map<std::string, result>::iterator> output;
     output.reserve(OneB.size());
     for(auto it = OneB.begin(); it != OneB.end(); ++it)
-        output.emplace_back(it);
+        output.push_back(it);
 
     std::sort(output.begin(), output.end(),
               [](auto& lhs, auto&rhs) {
@@ -186,6 +185,7 @@ void threading(chunk* chunk, const int& cpu){
         }
     }
     printf("}\n");
+    delete temp[0];
 }
 
 int main(int argc, char* argv[]){
