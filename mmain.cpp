@@ -1,8 +1,6 @@
 #include <iostream> 
-#include <unordered_map>
-#include <chrono> //time
+// #include <unordered_map>
 #include <vector>
-#include <bits/stdc++.h>
 #include <thread> //threading
 #include <algorithm> //min max
 #include <string>
@@ -11,7 +9,6 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
-#include "robin_hood.h"
 #include "parallel_hashmap/phmap.h"
 // store results of each station
 struct result{
@@ -103,14 +100,16 @@ void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::
     char* naming = starting;
     char* end = &chunks[cpu].data[chunks[cpu].end];
     char a[100];
+    int length;
     std::string name;
     while(starting < end){
         naming = starting;
         while(*starting != ';'){
             starting++;
         }
-        memcpy(a,naming,starting-naming);
-        a[starting-naming] = '\0';
+        length = starting-naming;
+        memcpy(a,naming,length);
+        a[length] = '\0';
         ++starting;
         name = a;
         int t = conversion(starting);
@@ -128,6 +127,7 @@ void ReadFile(chunk* chunks, const int& cpu, phmap::parallel_flat_hash_map<std::
             (*OneB)[name].num = 1;
         }
     }
+
     temp = OneB;
 }
 
@@ -168,13 +168,13 @@ void threading(chunk* chunk, const int& cpu){
         delete i;
     }
     // std::map<std::string, result> ordered(OneB.begin(), OneB.end());
-    // for(auto x = ordered.begin(); x != ordered.end(); ++X_OK)
-    //     printf("%s %f %f %f",x->first.c_str(), x->second.min,x->second.total/x->second.num, x->second.max);
+    // for(auto x = ordered.begin(); x != ordered.end(); ++x)
+    //     printf("%s=%.1f/%.1lf/%.1f",x->first.c_str(), x->second.min/10.,x->second.total/(10.*x->second.num), x->second.max/10.);
 
     std::vector<phmap::parallel_flat_hash_map<std::string, result>::iterator> output;
     output.reserve(OneB.size());
     for(auto it = OneB.begin(); it != OneB.end(); ++it)
-        output.push_back(it);
+        output.emplace_back(it);
 
     std::sort(output.begin(), output.end(),
               [](auto& lhs, auto&rhs) {
