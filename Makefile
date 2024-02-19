@@ -1,5 +1,5 @@
 CC=g++
-TARGET=mmain
+TARGET=main
 
 all: $(TARGET)
 
@@ -10,4 +10,4 @@ $(TARGET): $(TARGET).cpp
 	$(CC) -pthread -g -Wall -Wextra mmain.cpp -o main -O3
 
 clean:
-	rm -rf *.o $(TARGET) main
+	rm -rf *.o $(TARGET)
