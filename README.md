@@ -2,6 +2,7 @@
 
 A high-performance C++ implementation of the [One Billion Row Challenge (1BRC)](https://github.com/gunnarmorling/1brc), focused on efficient file reading, parallel processing, and fast temperature aggregation.
 
+![image](https://github.com/bu-cs447-2024-1s/one-billion-row-challenge-sirunde/assets/68354747/448bc580-becf-4dbf-900a-bd76ce34dc9a)
 ## Overview
 
 The One Billion Row Challenge processes a text file containing one billion temperature measurements from weather stations. Each line contains a station name and its recorded temperature, separated by a semicolon.
